@@ -8,6 +8,7 @@ import { getPostsTests } from "./post/getPosts.test"
 import { createPostTests } from "./post/createPost.test"
 import { getOnePostTests } from "./post/getOnePost.test"
 import { deletePostTests } from "./post/deletePost.test"
+import { editPostTests } from "./post/editPost.test"
 
 beforeAll(async () => {
 	try {
@@ -34,9 +35,9 @@ describe("Tsarka GraphQL API testing", () => {
 	})
 	describe("Post", () => {
 		describe("Create a post", createPostTests)
-		describe("Get one post", getOnePostTests)
+		describe("Get a post", getOnePostTests)
 		describe("Get posts", getPostsTests)
-		// describe("Edit post ", )
+		describe("Edit a post ", editPostTests)
 		describe("Delete a post", deletePostTests)
 	})
 })
