@@ -6,8 +6,7 @@
 	"scripts": {
 		"test": "jest --config --detectOpenHandles --forceExit jest.config.ts ./__tests__/test.spec.ts",
 		"dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-		"build": "cd src && cd ../",
-		"compile": "tsc",
+		"build": "tsc",
 		"start": "node dist/index.js"
 	},
 	"dependencies": {
