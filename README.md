@@ -61,6 +61,9 @@ Testing is built using Jest. Be aware that after each test, the tables are trunc
 ```bash
 yarn test
 ```
+Example test results:
+![image](https://github.com/Eager-coder/tsarka-test-task/assets/63045792/9abc41ed-6de9-47c5-896c-7ca8c7faa82a)
+
 ## API Docimentation
 ### Queries
 #### 1. Test query:
