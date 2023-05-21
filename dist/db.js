@@ -9,6 +9,5 @@ const clientOptions = {
     ssl: config_1.default.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
     connectionString: config_1.default.PG_STRING,
 };
-const client = new pg_1.Pool(clientOptions);
-client.connect();
-exports.default = client;
+const pool = new pg_1.Pool(clientOptions);
+exports.default = pool;

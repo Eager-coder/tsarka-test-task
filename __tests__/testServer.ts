@@ -9,9 +9,9 @@ import cookieParser from "cookie-parser"
 import bodyParser from "body-parser"
 import config from "../src/config"
 import { buildSchema } from "type-graphql"
-import UserResolver from "../src/resolvers/User"
 import ContextType from "../src/types/ContextType"
-import PostResolver from "../src/resolvers/Post"
+import { UserResolver } from "../src/schema/user/user.resolver"
+import { PostResolver } from "../src/schema/post/post.resolver"
 
 const app = express()
 const httpServer = http.createServer(app)

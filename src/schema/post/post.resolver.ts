@@ -1,65 +1,19 @@
-import { Arg, Ctx, Field, InputType, Mutation, ObjectType, Query, Resolver, UseMiddleware } from "type-graphql"
-import Post from "../models/Post"
+import { Arg, Ctx, Mutation, Query, Resolver, UseMiddleware } from "type-graphql"
+import { PostType } from "./post.type"
 import { GraphQLError } from "graphql"
+import Post from "../../models/Post"
+import { CheckAuth } from "../../middlewares/checkAuth"
+import { EditPostInput, PostInput } from "./post.input"
+import ContextType from "../../types/ContextType"
 import crypto from "crypto"
-import ContextType from "../types/ContextType"
-import { CheckAuth } from "../middlewares/checkAuth"
-
-@ObjectType()
-class PostType {
-	@Field()
-	id!: string
-
-	@Field()
-	header!: string
-
-	@Field({ nullable: true })
-	text?: string
-
-	@Field({ nullable: true })
-	image_url?: string
-
-	@Field()
-	user_id!: string
-
-	@Field()
-	date!: Date
-}
-
-@InputType()
-class PostInput {
-	@Field()
-	header!: string
-
-	@Field(() => String, { nullable: true })
-	image_url!: string
-
-	@Field(() => String, { nullable: true })
-	text!: string
-}
-
-@InputType()
-class EditPostInput {
-	@Field(() => String)
-	id!: string
-
-	@Field(() => String, { nullable: true })
-	header?: string
-
-	@Field(() => String, { nullable: true })
-	image_url?: string
-
-	@Field(() => String, { nullable: true })
-	text?: string
-}
 
 @Resolver()
-export default class PostResolver {
+export class PostResolver {
 	@Query(() => PostType, { nullable: true })
 	async getPost(@Arg("id") id: string) {
 		const post = await Post.getOne(id)
 		if (!post) {
-			throw new GraphQLError("Post not found")
+			throw new GraphQLError("Post not found", { extensions: { code: "NOT_FOUND" } })
 		}
 		return post
 	}
@@ -85,7 +39,9 @@ export default class PostResolver {
 	@UseMiddleware(CheckAuth)
 	async addPost(@Arg("post") { header, image_url, text }: PostInput, @Ctx() { user }: ContextType) {
 		if (!image_url && !text) {
-			throw new GraphQLError("Either image_url or text must be provided")
+			throw new GraphQLError("Either image_url or text must be provided", {
+				extensions: { code: "BAD_USER_INPUT" },
+			})
 		}
 		const newPost = {
 			id: crypto.randomUUID(),
@@ -106,7 +62,7 @@ export default class PostResolver {
 	async editPost(@Arg("post") { id, header, image_url, text }: EditPostInput, @Ctx() { user }: ContextType) {
 		const oldPost = await Post.getOne(id)
 		if (!id || !oldPost || oldPost.user_id != user.id) {
-			throw new GraphQLError("Post not found")
+			throw new GraphQLError("Post not found", { extensions: { code: "NOT_FOUND" } })
 		}
 
 		const editedPost = {
@@ -126,7 +82,7 @@ export default class PostResolver {
 		const post = await Post.getOne(id)
 
 		if (!post || post.user_id != user.id) {
-			throw new GraphQLError("Post not found")
+			throw new GraphQLError("Post not found", { extensions: { code: "NOT_FOUND" } })
 		}
 		await Post.delete(id)
 

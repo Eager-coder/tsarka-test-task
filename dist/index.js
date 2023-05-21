@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.closeServer = exports.main = void 0;
 require("reflect-metadata");
 const server_1 = require("@apollo/server");
 const express4_1 = require("@apollo/server/express4");
@@ -14,13 +15,13 @@ const cookie_parser_1 = __importDefault(require("cookie-parser"));
 const body_parser_1 = __importDefault(require("body-parser"));
 const config_1 = __importDefault(require("./config"));
 const type_graphql_1 = require("type-graphql");
-const User_1 = __importDefault(require("./resolvers/User"));
-const Post_1 = __importDefault(require("./resolvers/Post"));
+const user_resolver_1 = require("./user/user.resolver");
+const post_resolver_1 = require("./post/post.resolver");
 const app = express_1.default();
 const httpServer = http_1.default.createServer(app);
 async function main() {
     const schema = await type_graphql_1.buildSchema({
-        resolvers: [User_1.default, Post_1.default],
+        resolvers: [user_resolver_1.UserResolver, post_resolver_1.PostResolver],
         validate: false,
         dateScalarMode: "isoDate",
     });
@@ -44,4 +45,9 @@ async function main() {
     httpServer.listen({ port: config_1.default.PORT });
     console.log(`Server ready at http://localhost:${config_1.default.PORT}`);
 }
+exports.main = main;
+function closeServer() {
+    httpServer.close();
+}
+exports.closeServer = closeServer;
 main();

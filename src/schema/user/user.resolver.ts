@@ -1,59 +1,25 @@
-import { Arg, Ctx, Field, InputType, Mutation, ObjectType, Query, Resolver, UseMiddleware } from "type-graphql"
+import { Arg, Ctx, Mutation, Query, Resolver, UseMiddleware } from "type-graphql"
+import { LoginInput, RegisterInput } from "./user.input"
 import { GraphQLError } from "graphql"
-import User from "../models/User"
+import User, { UserModel } from "../../models/User"
 import crypto from "crypto"
 import bcrypt from "bcrypt"
-import ContextType from "../types/ContextType"
-import RefreshToken from "../models/RefreshToken"
-import config from "../config"
-import { generateAccessToken, generateRefreshToken } from "../helpers/generateTokens"
-import getUnixTimeNow from "../helpers/getUnixTimeNow"
-import { CheckAuth } from "../middlewares/checkAuth"
-
-@InputType()
-class RegisterInput {
-	@Field()
-	name!: string
-
-	@Field()
-	email!: string
-
-	@Field()
-	password!: string
-}
-
-@InputType()
-class LoginInput {
-	@Field()
-	email!: string
-
-	@Field()
-	password!: string
-}
-
-@ObjectType()
-class UserType {
-	@Field()
-	id!: string
-
-	@Field()
-	name!: string
-
-	@Field()
-	email!: string
-
-	@Field()
-	date_created!: number
-}
+import { UserType } from "./user.type"
+import ContextType from "../../types/ContextType"
+import { generateAccessToken, generateRefreshToken } from "../../helpers/generateTokens"
+import RefreshToken from "../../models/RefreshToken"
+import getUnixTimeNow from "../../helpers/getUnixTimeNow"
+import config from "../../config"
+import { CheckAuth } from "../../middlewares/checkAuth"
 
 @Resolver()
-export default class UserResolver {
+export class UserResolver {
 	@Query(() => Boolean)
 	test() {
 		return true
 	}
-	@Mutation(() => String)
-	async register(@Arg("data") { password, email, name }: RegisterInput): Promise<string> {
+	@Mutation(() => Boolean)
+	async register(@Arg("data") { password, email, name }: RegisterInput): Promise<Boolean> {
 		if (!email.length) {
 			throw new GraphQLError("Email cannot be empty", { extensions: { code: "BAD_USER_INPUT", argumentName: "email" } })
 		}
@@ -65,7 +31,12 @@ export default class UserResolver {
 				extensions: { code: "BAD_USER_INPUT", argumentName: "password" },
 			})
 		}
-		const user = await User.get(email)
+		let user: UserModel | null = null
+		try {
+			user = await User.get(email)
+		} catch (error) {
+			throw new GraphQLError("Something went wrong", { extensions: { code: "INTERNAL_SERVER_ERROR" } })
+		}
 		if (user) {
 			throw new GraphQLError("Email alreary taken", { extensions: { code: "BAD_USER_INPUT", argumentName: "email" } })
 		}
@@ -76,8 +47,12 @@ export default class UserResolver {
 			password: await bcrypt.hash(password, 10),
 			date_created: Math.floor(Date.now() / 1000),
 		}
-		await User.add(newUser)
-		return "Successfully registered"
+		try {
+			await User.add(newUser)
+			return true
+		} catch (error) {
+			throw new GraphQLError("Something went wrong", { extensions: { code: "INTERNAL_SERVER_ERROR" } })
+		}
 	}
 
 	@Mutation(() => UserType)
@@ -92,12 +67,9 @@ export default class UserResolver {
 				extensions: { code: "BAD_USER_INPUT", argumentName: "password" },
 			})
 		}
-
 		const user = await User.get(email)
-		if (!user) {
-			throw new GraphQLError("Email or password is incorrect", { extensions: { code: "BAD_USER_INPUT" } })
-		}
-		if (!(await bcrypt.compare(password, user.password))) {
+
+		if (!user || !(await bcrypt.compare(password, user.password))) {
 			throw new GraphQLError("Email or password is incorrect", { extensions: { code: "BAD_USER_INPUT" } })
 		}
 
@@ -109,18 +81,19 @@ export default class UserResolver {
 			maxAge: 14 * 86400 * 1000,
 			secure: config.NODE_ENV === "production",
 		})
+		delete user.password
 		return user
 	}
 
-	@Mutation(() => String)
+	@Mutation(() => Boolean)
 	async refreshToken(@Ctx() { req, res }: ContextType) {
 		const refresh_token = req.cookies.refresh_token
 		const tokenObj = await RefreshToken.getByToken(refresh_token)
 		if (!tokenObj) {
-			throw new GraphQLError("Token not found")
+			throw new GraphQLError("Cannot refresh tokens, refresh_token not found", { extensions: { code: "FORBIDDEN" } })
 		}
 		if (tokenObj.expity_date < Math.floor(Date.now() / 1000)) {
-			throw new GraphQLError("Token has expired")
+			throw new GraphQLError("Cannot refresh tokens, refresh_token has expired", { extensions: { code: "FORBIDDEN" } })
 		}
 		const newRefreshToken = generateRefreshToken()
 		const newAccessToken = generateAccessToken(tokenObj.user_id)
@@ -138,21 +111,21 @@ export default class UserResolver {
 			maxAge: 15 * 60,
 			secure: config.NODE_ENV === "production",
 		})
-		return "Token refreshed"
+		return true
 	}
 
-	@Mutation(() => String)
+	@Mutation(() => Boolean)
 	@UseMiddleware(CheckAuth)
-	async logout(@Ctx() { req, res, user }: ContextType) {
-		const { refresh_token } = req.cookies
+	async logout(@Ctx() ctx: ContextType) {
+		const { refresh_token } = ctx.req.cookies
 		await RefreshToken.delete(refresh_token)
 
-		res.clearCookie("access_token")
-		res.clearCookie("refresh_token")
+		ctx.res.clearCookie("access_token")
+		ctx.res.clearCookie("refresh_token")
 
-		return "You are logged out"
+		return true
 	}
 	catch() {
-		throw new GraphQLError("Something went wrong")
+		throw new GraphQLError("Something went wrong", { extensions: { code: "INTERNAL_SERVER_ERROR" } })
 	}
 }

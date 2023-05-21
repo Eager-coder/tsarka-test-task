@@ -8,7 +8,7 @@ export const CheckAuth: MiddlewareFn<ContextType> = async ({ context }, next) =>
 	try {
 		const { access_token } = context.req.cookies
 		if (!access_token) {
-			throw new GraphQLError("Unauthorized")
+			throw new GraphQLError("Unauthorized", { extensions: { code: "FORBIDDEN" } })
 		}
 		const decoded = jwt.verify(access_token, config.JWT_ACCESS_SECRET!)
 
@@ -19,6 +19,6 @@ export const CheckAuth: MiddlewareFn<ContextType> = async ({ context }, next) =>
 
 		return next()
 	} catch (error) {
-		throw new GraphQLError("Unauthorized")
+		throw new GraphQLError("Unauthorized", { extensions: { code: "FORBIDDEN" } })
 	}
 }

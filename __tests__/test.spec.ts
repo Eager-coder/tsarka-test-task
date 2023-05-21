@@ -1,5 +1,5 @@
 import { closeServer, main } from "./testServer"
-import { registerTests, testUser } from "./auth/register.test"
+import { registerTests } from "./auth/register.test"
 import db from "../src/db"
 import { loginTests } from "./auth/login.test"
 import { refreshTokenTestings } from "./auth/refreshToken.test"
@@ -12,13 +12,21 @@ import { editPostTests } from "./post/editPost.test"
 
 beforeAll(async () => {
 	try {
-		await db.query("TRUNCATE TABLE refresh_tokens ")
-		await db.query("TRUNCATE TABLE posts")
-		await db.query("DELETE FROM users WHERE email = $1", [testUser.email])
 	} catch (error) {
 		console.log(error)
 	}
 	await main()
+})
+beforeEach(async () => {
+	await db.query("TRUNCATE TABLE refresh_tokens CASCADE")
+	await db.query("TRUNCATE TABLE posts CASCADE")
+	await db.query("TRUNCATE TABLE users CASCADE")
+})
+
+afterEach(async () => {
+	await db.query("TRUNCATE TABLE refresh_tokens CASCADE")
+	await db.query("TRUNCATE TABLE posts CASCADE")
+	await db.query("TRUNCATE TABLE users CASCADE")
 })
 
 afterAll(async () => {
